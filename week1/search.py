@@ -114,10 +114,39 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
         "query":{
             "bool":{
                 "must":{
-                    "query_string":{
-                        "fields": ["name", "shortDescription", "longDescription"],
-                        "query": user_query,
-                        "phrase_slop": 3
+                    "function_score": {
+                        "query": {
+                            "query_string": {
+                                "fields": ["name^1000", "shortDescription^50", "longDescription^10", "department"],
+                                "query": user_query,
+                                "phrase_slop": 3
+                            }
+                        },
+                        "boost_mode": "multiply",
+                        "score_mode": "avg",
+                        "functions": [
+                            {
+                            "field_value_factor": {
+                                "field": "salesRankShortTerm",
+                                "missing": 100000000,
+                                "modifier": "reciprocal"
+                            }
+                            },
+                            {
+                            "field_value_factor": {
+                                "field": "salesRankMediumTerm",
+                                "missing": 100000000,
+                                "modifier": "reciprocal"
+                            }
+                            },
+                            {
+                            "field_value_factor": {
+                                "field": "salesRankLongTerm",
+                                "missing": 100000000,
+                                "modifier": "reciprocal"
+                            }
+                            }
+                        ]
                     }
                 },
                 "filter": filters
