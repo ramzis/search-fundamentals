@@ -170,6 +170,29 @@ def add_spelling_suggestions(query_obj, user_query):
     #    }
     #}
 
+def sku_boost_string(df):
+    # Group dataframe by "sku" column
+    grouped = df.groupby("sku")
+    
+    # Get total count of all values in the dataframe
+    total_count = df.shape[0]
+    
+    # Create a list to store sku^boost values
+    sku_boost_list = []
+    
+    # Iterate through the groups
+    for sku, group in grouped:
+        # Calculate boost value
+        boost = len(group) / total_count
+        
+        # Add sku^boost to the list
+        sku_boost_list.append(f"{sku}^{boost:.3f}")
+    
+    # Join the list into a whitespace-separated string
+    sku_boost_string = " ".join(sku_boost_list)
+    
+    return sku_boost_string
+
 
 # Given the user query from the UI, the query object we've built so far and a Pandas data GroupBy data frame,
 # construct and add a query that consists of the ids from the items that were clicked on by users for that query
@@ -178,12 +201,17 @@ def add_click_priors(query_obj, user_query, priors_gb):
     try:
         prior_clicks_for_query = priors_gb.get_group(user_query)
         if prior_clicks_for_query is not None and len(prior_clicks_for_query) > 0:
-            click_prior = ""
+            click_prior = sku_boost_string(prior_clicks_for_query)
             #### W2, L1, S1
             # Create a string object of SKUs and weights that will boost documents matching the SKU
-            print("TODO: Implement me")
             if click_prior != "":
-                click_prior_query_obj = None # Implement a query object that matches on the ID or SKU with weights of
+                click_prior_query_obj ={
+                    "query_string": {
+                        "default_field": "sku",
+                        "query": click_prior,
+                        "boost": 150
+                    }
+                }
                 # This may feel like cheating, but it's really not, esp. in ecommerce where you have all this prior data,
                 if click_prior_query_obj is not None:
                     query_obj["query"]["function_score"]["query"]["bool"]["should"].append(click_prior_query_obj)
